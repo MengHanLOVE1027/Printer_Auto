@@ -1,0 +1,339 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付页面 - 自助打印系统 v1.0.0 - 作者：梦涵LOVE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 2rem;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        .payment-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .qr-code-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            border: 1px solid #ddd;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">支付打印费用</h4>
+                <small class="text-white">作者：梦涵LOVE | QQ：2193438288 | v1.0.0</small>
+            </div>
+            <div class="card-body">
+                <div class="payment-info">
+                    <h5>订单信息</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td>文件名：</td>
+                            <td>{{ task.filename }}</td>
+                        </tr>
+                        <tr>
+                            <td>打印份数：</td>
+                            <td>{{ task.copies }}份</td>
+                        </tr>
+                        <tr>
+                            <td>打印模式：</td>
+                            <td>{% if task.color %}彩色{% else %}黑白{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td>双面打印：</td>
+                            <td>{% if task.duplex %}是{% else %}否{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td>打印机：</td>
+                            <td>{{ task.printer_name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>应付金额：</strong></td>
+                            <td><strong>¥{{ task.cost }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-center mb-3">请选择支付方式</h5>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <button class="btn btn-primary me-md-2" id="alipay-btn">
+                            <i class="bi bi-alipay"></i> 支付宝支付
+                        </button>
+                        <button class="btn btn-success" id="wechat-btn">
+                            <i class="bi bi-wechat"></i> 微信支付
+                        </button>
+                        <button class="btn btn-info" id="qqpay-btn">
+                            <i class="bi bi-qq"></i> QQ钱包
+                        </button>
+                        <button class="btn btn-warning" id="unionpay-btn">
+                            <i class="bi bi-credit-card"></i> 云闪付
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5 class="text-center mb-3">请选择支付类型</h5>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <div class="form-check me-md-2">
+                            <input class="form-check-input" type="radio" name="payment_type" id="form_type" value="form" checked>
+                            <label class="form-check-label" for="form_type">
+                                页面跳转支付（推荐）
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment_type" id="api_type" value="api">
+                            <label class="form-check-label" for="api_type">
+                                API接口支付
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="payment-form-container" style="display: none;">
+                    <!-- 支付表单将通过JavaScript动态生成 -->
+                </div>
+
+                <div id="qr-code-container" class="qr-code-container" style="display: none;">
+                    <div class="qr-code" id="qr-code">
+                        <!-- 二维码将通过JavaScript动态生成 -->
+                    </div>
+                    <p class="mt-2">请使用手机扫描二维码完成支付</p>
+                    <button class="btn btn-outline-primary mt-2" id="refresh-status-btn">刷新支付状态</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const taskId = "{{ task.id }}";
+            const alipayBtn = document.getElementById('alipay-btn');
+            const wechatBtn = document.getElementById('wechat-btn');
+            const qqpayBtn = document.getElementById('qqpay-btn');
+            const unionpayBtn = document.getElementById('unionpay-btn');
+            const paymentFormContainer = document.getElementById('payment-form-container');
+            const qrCodeContainer = document.getElementById('qr-code-container');
+            const refreshStatusBtn = document.getElementById('refresh-status-btn');
+
+            // 处理支付宝支付按钮点击
+            alipayBtn.addEventListener('click', function() {
+                processPayment('alipay');
+            });
+
+            // 处理微信支付按钮点击
+            wechatBtn.addEventListener('click', function() {
+                processPayment('wxpay');
+            });
+            
+            // 处理QQ钱包支付按钮点击
+            qqpayBtn.addEventListener('click', function() {
+                processPayment('qqpay');
+            });
+            
+            // 处理云闪付支付按钮点击
+            unionpayBtn.addEventListener('click', function() {
+                processPayment('unionpay');
+            });
+
+            // 处理刷新支付状态按钮点击
+            refreshStatusBtn.addEventListener('click', function() {
+                checkPaymentStatus();
+            });
+
+            // 处理支付请求
+            function processPayment(type) {
+                // 显示加载状态
+                alipayBtn.disabled = true;
+                wechatBtn.disabled = true;
+                qqpayBtn.disabled = true;
+                unionpayBtn.disabled = true;
+                alipayBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 处理中...';
+                wechatBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 处理中...';
+                qqpayBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 处理中...';
+                unionpayBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 处理中...';
+                
+                // 获取支付类型
+                const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+
+                // 发送支付请求
+                fetch('/process_payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'task_id': taskId,
+                        'payment_type': paymentType,
+                        'payment_method': type
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.payment_type === 'form') {
+                            // 表单提交方式
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = data.submit_url;
+
+                            // 添加支付参数
+                            for (const [key, value] of Object.entries(data.params)) {
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = key;
+                                input.value = value;
+                                form.appendChild(input);
+                            }
+
+                            // 清空容器并添加表单
+                            paymentFormContainer.innerHTML = '';
+                            paymentFormContainer.appendChild(form);
+
+                            // 提交表单
+                            form.submit();
+                        } else {
+                            // API方式
+                            // 创建API请求
+                            const formData = new FormData();
+                            for (const [key, value] of Object.entries(data.params)) {
+                                formData.append(key, value);
+                            }
+                            
+                            fetch(data.api_url, {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(result => {
+                                if (result.code === 1) {
+                                    // 显示支付二维码
+                                    qrCodeContainer.style.display = 'block';
+                                    const qrCode = document.getElementById('qr-code');
+                                    qrCode.innerHTML = `<img src="${result.qrcode}" alt="支付二维码" style="max-width: 100%;">`;
+                                    
+                                    // 开始轮询检查支付状态
+                                    startPaymentStatusCheck();
+                                } else {
+                                    alert('创建支付订单失败: ' + result.msg);
+                                    // 恢复按钮状态
+                                    alipayBtn.disabled = false;
+                                    wechatBtn.disabled = false;
+                                    qqpayBtn.disabled = false;
+                                    alipayBtn.innerHTML = '<i class="bi bi-alipay"></i> 支付宝支付';
+                                    wechatBtn.innerHTML = '<i class="bi bi-wechat"></i> 微信支付';
+                                    qqpayBtn.innerHTML = '<i class="bi bi-qq"></i> QQ钱包';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('创建支付订单失败:', error);
+                                alert('创建支付订单失败，请重试');
+                                // 恢复按钮状态
+                                alipayBtn.disabled = false;
+                                wechatBtn.disabled = false;
+                                qqpayBtn.disabled = false;
+                                alipayBtn.innerHTML = '<i class="bi bi-alipay"></i> 支付宝支付';
+                                wechatBtn.innerHTML = '<i class="bi bi-wechat"></i> 微信支付';
+                                qqpayBtn.innerHTML = '<i class="bi bi-qq"></i> QQ钱包';
+                            });
+                        }
+                    } else {
+                        alert('支付请求失败: ' + data.error);
+                        // 恢复按钮状态
+                        alipayBtn.disabled = false;
+                        wechatBtn.disabled = false;
+                        qqpayBtn.disabled = false;
+                        unionpayBtn.disabled = false;
+                        alipayBtn.innerHTML = '<i class="bi bi-alipay"></i> 支付宝支付';
+                        wechatBtn.innerHTML = '<i class="bi bi-wechat"></i> 微信支付';
+                        qqpayBtn.innerHTML = '<i class="bi bi-qq"></i> QQ钱包';
+                        unionpayBtn.innerHTML = '<i class="bi bi-credit-card"></i> 云闪付';
+                    }
+                })
+                .catch(error => {
+                    console.error('支付请求失败:', error);
+                    alert('支付请求失败，请重试');
+                    // 恢复按钮状态
+                    alipayBtn.disabled = false;
+                    wechatBtn.disabled = false;
+                    qqpayBtn.disabled = false;
+                    unionpayBtn.disabled = false;
+                    alipayBtn.innerHTML = '<i class="bi bi-alipay"></i> 支付宝支付';
+                    wechatBtn.innerHTML = '<i class="bi bi-wechat"></i> 微信支付';
+                    qqpayBtn.innerHTML = '<i class="bi bi-qq"></i> QQ钱包';
+                    unionpayBtn.innerHTML = '<i class="bi bi-credit-card"></i> 云闪付';
+                });
+            }
+
+            // 检查支付状态
+            function checkPaymentStatus() {
+                refreshStatusBtn.disabled = true;
+                refreshStatusBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 检查中...';
+
+                fetch(`/payment/check/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.paid) {
+                            // 支付成功，跳转到打印执行页面
+                            window.location.href = `/execute_print/${taskId}`;
+                        } else {
+                            alert('支付尚未完成，请继续支付');
+                        }
+                    } else {
+                        alert('检查支付状态失败: ' + data.error);
+                    }
+                    // 恢复按钮状态
+                    refreshStatusBtn.disabled = false;
+                    refreshStatusBtn.innerHTML = '刷新支付状态';
+                })
+                .catch(error => {
+                    console.error('检查支付状态失败:', error);
+                    alert('检查支付状态失败，请重试');
+                    // 恢复按钮状态
+                    refreshStatusBtn.disabled = false;
+                    refreshStatusBtn.innerHTML = '刷新支付状态';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自助打印系统 v1.0.0 - 作者：梦涵LOVE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 2rem;
+        }
+        .drop-zone {
+            width: 100%;
+            height: 150px;
+            padding: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            color: #007bff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone:hover, .drop-zone.drag-over {
+            background-color: #e9f5ff;
+            border-color: #0056b3;
+        }
+        
+        .drop-zone-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        .preview-container {
+            margin-top: 1rem;
+            max-height: 300px;
+            overflow: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .alert {
+            margin-top: 1rem;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">自助打印系统</h3>
+                        <div class="text-end">
+                            <small class="text-muted">作者：梦涵LOVE | QQ：2193438288 | v1.0.0</small>
+                            <a href="{{ url_for('list_tasks') }}" class="btn btn-light ms-2">
+                                <i class="bi bi-list-task"></i> 打印任务列表
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages() %}
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="post" enctype="multipart/form-data" action="/upload">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">选择文件</label>
+                                <div class="drop-zone" id="dropZone">
+                                    <span class="drop-zone-text">拖放文件到此处或点击选择文件</span>
+                                    <input type="file" id="file" name="file" required style="display: none;">
+                                </div>
+                                <div class="form-text">支持所有文件类型 (最大16MB)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="printer" class="form-label">选择打印机</label>
+                                <select class="form-select" id="printer" name="printer" required>
+                                    {% for printer in printers %}
+                                    <option value="{{ printer.name }}">{{ printer.description }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="copies" class="form-label">打印份数</label>
+                                    <input type="number" class="form-control" id="copies" name="copies" min="1" max="10" value="1">
+                                </div>
+
+                                <div class="col-md-8 mb-3">
+                                    <div class="form-check form-switch mt-4">
+                                        <input class="form-check-input" type="checkbox" id="color" name="color">
+                                        <label class="form-check-label" for="color">
+                                            彩色打印
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="duplex" name="duplex">
+                                        <label class="form-check-label" for="duplex">
+                                            双面打印
+                                        </label>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="paper-size" name="paper-size" value="A4">
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">提交打印</button>
+                            </div>
+                        </form>
+
+                        <div class="preview-container" id="preview" style="display: none;">
+                            <h5>文件预览</h5>
+                            <div id="preview-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5>使用说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>拖放文件到指定区域或点击选择您要打印的文件</li>
+                            <li>从下拉列表中选择要使用的打印机（系统会自动检测可用打印机）</li>
+                            <li>设置打印份数（默认为1份）</li>
+                            <li>根据需要选择彩色打印或双面打印选项</li>
+                            <li>点击"提交打印"按钮发送打印任务</li>
+                            <li>打印任务将发送到所选打印机，请到打印机处取件</li>
+                        </ol>
+                        <p class="text-muted">注意：请确保文件格式正确，文件大小不超过16MB。如果打印机列表为空，请检查系统打印机连接。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 拖放功能
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('file');
+        
+        // 点击拖放区域触发文件选择
+        dropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // 文件选择变化时触发预览
+        fileInput.addEventListener('change', function(e) {
+            handleFileSelection(e.target.files[0]);
+        });
+        
+        // 拖放事件处理
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.remove('drag-over');
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length) {
+                fileInput.files = files;
+                handleFileSelection(files[0]);
+            }
+        }, false);
+        
+        // 处理文件选择和预览
+        function handleFileSelection(file) {
+            const preview = document.getElementById('preview');
+            const previewContent = document.getElementById('preview-content');
+
+            if (file) {
+                preview.style.display = 'block';
+
+                // 更新拖放区域文本
+                document.querySelector('.drop-zone-text').textContent = `已选择: ${file.name}`;
+
+                // 根据文件类型显示不同的预览
+                const fileType = file.type;
+
+                if (fileType.startsWith('image/')) {
+                    // 图片预览
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewContent.innerHTML = `<img src="${event.target.result}" class="img-fluid" alt="预览图片">`;
+                    }
+                    reader.readAsDataURL(file);
+                } else if (fileType === 'text/plain') {
+                    // 文本预览
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewContent.innerHTML = `<pre>${event.target.result}</pre>`;
+                    }
+                    reader.readAsText(file);
+                } else if (fileType === 'application/pdf') {
+                    // PDF预览
+                    const fileURL = URL.createObjectURL(file);
+                    previewContent.innerHTML = `<embed src="${fileURL}" type="application/pdf" width="100%" height="300px" />`;
+                } else {
+                    // 其他文件类型只显示文件名
+                    previewContent.innerHTML = `<p>文件: ${file.name}</p><p>文件大小: ${(file.size / 1024 / 1024).toFixed(2)} MB</p><p>文件类型不支持预览</p>`;
+                }
+            } else {
+                preview.style.display = 'none';
+                document.querySelector('.drop-zone-text').textContent = '拖放文件到此处或点击选择文件';
+            }
+        }
+        
+        // 原有的文件变化事件处理
+        document.getElementById('file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('preview');
+            const previewContent = document.getElementById('preview-content');
+
+            if (file) {
+                preview.style.display = 'block';
+
+                // 根据文件类型显示不同的预览
+                const fileType = file.type;
+
+                if (fileType.startsWith('image/')) {
+                    // 图片预览
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewContent.innerHTML = `<img src="${event.target.result}" class="img-fluid" alt="预览图片">`;
+                    }
+                    reader.readAsDataURL(file);
+                } else if (fileType === 'text/plain') {
+                    // 文本预览
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        previewContent.innerHTML = `<pre>${event.target.result}</pre>`;
+                    }
+                    reader.readAsText(file);
+                } else if (fileType === 'application/pdf') {
+                    // PDF预览
+                    const fileURL = URL.createObjectURL(file);
+                    previewContent.innerHTML = `<embed src="${fileURL}" type="application/pdf" width="100%" height="300px" />`;
+                } else {
+                    // 其他文件类型只显示文件名
+                    previewContent.innerHTML = `<p>文件: ${file.name}</p><p>文件类型不支持预览</p>`;
+                }
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+
+
+    </script>
+</body>
+</html>

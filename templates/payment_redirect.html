@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在跳转到支付页面 - 自助打印系统 v1.0.0 - 作者：梦涵LOVE</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0b5ed7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <div class="message">
+            <h3>正在跳转到支付页面...</h3>
+            <p>如果页面没有自动跳转，请点击下方按钮手动跳转</p>
+            <p class="text-muted">自助打印系统 v1.0.0 | 作者：梦涵LOVE | QQ：2193438288</p>
+        </div>
+        <form id="paymentForm" method="post" action="http://127.0.0.1:5000/xpay/epay/submit.php">
+            <!-- 动态添加支付参数 -->
+        </form>
+        <button class="btn" id="manualRedirectBtn">立即跳转</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 支付参数
+            const params = {{ params|tojson }};
+
+            // 添加支付参数到表单
+            const form = document.getElementById('paymentForm');
+            for (const [key, value] of Object.entries(params)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
+            }
+
+            // 自动提交表单
+            setTimeout(function() {
+                form.submit();
+            }, 2000);
+
+            // 手动跳转按钮
+            document.getElementById('manualRedirectBtn').addEventListener('click', function() {
+                form.submit();
+            });
+        });
+    </script>
+</body>
+</html>

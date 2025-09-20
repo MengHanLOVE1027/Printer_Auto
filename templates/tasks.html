@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打印任务列表 - 自助打印系统 v1.0.0 - 作者：梦涵LOVE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 2rem;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .status-badge {
+            font-size: 14px;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        .progress {
+            height: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">打印任务列表</h3>
+                        <div class="text-end">
+                            <small class="text-white">作者：梦涵LOVE | QQ：2193438288 | v1.0.0</small>
+                            <a href="{{ url_for('index') }}" class="btn btn-light ms-2">
+                                <i class="bi bi-plus-circle"></i> 新建打印任务
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if tasks %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>文件名</th>
+                                            <th>状态</th>
+                                            <th>进度</th>
+                                            <th>创建时间</th>
+                                            <th>更新时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for task in tasks %}
+                                        <tr>
+                                            <td>{{ task.filename }}</td>
+                                            <td>
+                                                <span class="badge status-badge 
+                                                    {% if task.status == 'pending' %}bg-warning
+                                                    {% elif task.status == 'processing' %}bg-info
+                                                    {% elif task.status == 'completed' %}bg-success
+                                                    {% elif task.status == 'failed' %}bg-danger
+                                                    {% endif %}">
+                                                    {{ task.status == 'pending' and "等待中" or 
+                                                       task.status == 'processing' and "处理中" or 
+                                                       task.status == 'completed' and "已完成" or "失败" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="width: 100px;">
+                                                    <div class="progress-bar 
+                                                        {% if task.status == 'pending' %}bg-warning
+                                                        {% elif task.status == 'processing' %}bg-info
+                                                        {% elif task.status == 'completed' %}bg-success
+                                                        {% elif task.status == 'failed' %}bg-danger
+                                                        {% endif %}" 
+                                                        role="progressbar" 
+                                                        style="width: {{ task.progress }}%;" 
+                                                        aria-valuenow="{{ task.progress }}" 
+                                                        aria-valuemin="0" 
+                                                        aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                                <small>{{ task.progress }}%</small>
+                                            </td>
+                                            <td>{{ task.created_at }}</td>
+                                            <td>{{ task.updated_at }}</td>
+                                            <td>
+                                                <a href="{{ url_for('task_status', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    查看详情
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                                <h4 class="text-muted">暂无打印任务</h4>
+                                <p class="text-muted">点击上方按钮创建新的打印任务</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.js"></script>
+    <script>
+        // 如果有正在处理的任务，定期刷新页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查是否有正在处理的任务
+            const hasProcessingTasks = {% if tasks %}{% set processing_tasks = tasks | selectattr('status', 'equalto', 'processing') | list %}{% set has_processing = processing_tasks | length > 0 %}{{ has_processing | tojson | safe }}{% else %}false{% endif %};
+
+            if (hasProcessingTasks) {
+                // 每10秒刷新一次页面
+                setInterval(function() {
+                    window.location.reload();
+                }, 10000);
+            }
+        });
+    </script>
+</body>
+</html>

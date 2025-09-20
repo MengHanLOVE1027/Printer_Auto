@@ -1,0 +1,9 @@
+
+# 自助打印系统 v1.0.0 - 作者：梦涵LOVE (QQ 2193438288)
+
+Flask==2.2.3
+Werkzeug==2.2.3
+pywin32==311
+Pillow==9.5.0
+python-dotenv==1.0.0
+requests==2.31.0
