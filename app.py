@@ -22,7 +22,7 @@ from task_storage import get_print_tasks, set_print_tasks, get_task, update_task
 
 # 项目基本信息
 PROJECT_NAME = "自助打印系统"
-VERSION = "v1.0.0"
+VERSION = "v1.0.1"
 AUTHOR = "梦涵LOVE"
 CONTACT = "QQ 2193438288"
 
